@@ -17,15 +17,15 @@ public class ProxyResponse {
         this.body = body != null ? body.clone() : new byte[0];
     }
 
-    public int getStatusCode() {
+    public int statusCode() {
         return statusCode;
     }
 
-    public Headers getHeaders() {
+    public Headers headers() {
         return headers;
     }
 
-    public byte[] getBody() {
+    public byte[] body() {
         return body.clone();
     }
 

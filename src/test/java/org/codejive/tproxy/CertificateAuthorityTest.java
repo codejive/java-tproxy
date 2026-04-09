@@ -3,9 +3,11 @@ package org.codejive.tproxy;
 import static org.assertj.core.api.Assertions.*;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for CertificateAuthority. */
 @DisplayName("Certificate Authority Tests")
@@ -13,28 +15,22 @@ import org.junit.jupiter.api.*;
 public class CertificateAuthorityTest {
 
     private static final String TEST_HOSTNAME = "example.com";
+
+    @TempDir Path tempDir;
+
     private CertificateAuthority ca;
 
     @BeforeEach
     public void setUp() throws Exception {
-        // Clean up any existing CA files from previous test runs
-        cleanupCAFiles();
-
-        // Create new CA
-        ca = new CertificateAuthority();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        // Clean up CA files after each test
-        cleanupCAFiles();
+        // Create new CA using temporary directory
+        ca = new CertificateAuthority(tempDir);
     }
 
     @Test
     @Order(1)
     @DisplayName("Should generate CA certificate on first use")
     public void testGenerateCA() {
-        X509Certificate caCert = ca.getCACertificate();
+        X509Certificate caCert = ca.caCertificate();
 
         assertThat(caCert).isNotNull();
         assertThat(caCert.getSubjectX500Principal().getName()).contains("TProxy CA");
@@ -45,8 +41,8 @@ public class CertificateAuthorityTest {
     @Order(2)
     @DisplayName("Should persist CA certificate to disk")
     public void testPersistCA() throws Exception {
-        File keystoreFile = new File("tproxy-ca.p12");
-        File certFile = new File("tproxy-ca.crt");
+        File keystoreFile = tempDir.resolve("tproxy-ca.p12").toFile();
+        File certFile = tempDir.resolve("tproxy-ca.crt").toFile();
 
         assertThat(keystoreFile).exists();
         assertThat(certFile).exists();
@@ -56,11 +52,11 @@ public class CertificateAuthorityTest {
     @Order(3)
     @DisplayName("Should reuse existing CA certificate")
     public void testReuseCA() throws Exception {
-        X509Certificate firstCert = ca.getCACertificate();
+        X509Certificate firstCert = ca.caCertificate();
 
         // Create a new CA instance (should load existing)
-        CertificateAuthority ca2 = new CertificateAuthority();
-        X509Certificate secondCert = ca2.getCACertificate();
+        CertificateAuthority ca2 = new CertificateAuthority(tempDir);
+        X509Certificate secondCert = ca2.caCertificate();
 
         assertThat(secondCert.getSerialNumber()).isEqualTo(firstCert.getSerialNumber());
         assertThat(secondCert.getEncoded()).isEqualTo(firstCert.getEncoded());
@@ -114,7 +110,7 @@ public class CertificateAuthorityTest {
     public void testVerifyServerCertificate() throws Exception {
         KeyStore serverKeyStore = ca.generateServerCertificate(TEST_HOSTNAME);
         X509Certificate serverCert = (X509Certificate) serverKeyStore.getCertificate(TEST_HOSTNAME);
-        X509Certificate caCert = ca.getCACertificate();
+        X509Certificate caCert = ca.caCertificate();
 
         // Verify the server certificate was signed by the CA
         assertThatCode(() -> serverCert.verify(caCert.getPublicKey())).doesNotThrowAnyException();
@@ -133,10 +129,5 @@ public class CertificateAuthorityTest {
         assertThat(cert1.getSerialNumber()).isNotEqualTo(cert2.getSerialNumber());
         assertThat(cert1.getSubjectX500Principal().getName()).contains("example.com");
         assertThat(cert2.getSubjectX500Principal().getName()).contains("test.com");
-    }
-
-    private void cleanupCAFiles() {
-        new File("tproxy-ca.p12").delete();
-        new File("tproxy-ca.crt").delete();
     }
 }

@@ -5,9 +5,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,18 +27,16 @@ public class HttpProxy {
     private static final Logger logger = LoggerFactory.getLogger(HttpProxy.class);
 
     private final List<Interceptor> interceptors = new ArrayList<>();
-    private final HttpClient httpClient;
+    private HttpClient httpClient;
     private ProxyServer proxyServer;
+    private CertificateAuthority certificateAuthority;
     private boolean running = false;
+    private boolean httpsInterceptionEnabled = false;
+    private Path caStorageDir;
     private int port;
 
     public HttpProxy() {
-        this.httpClient =
-                HttpClient.newBuilder()
-                        .version(HttpClient.Version.HTTP_1_1) // Start with HTTP/1.1
-                        .connectTimeout(Duration.ofSeconds(30))
-                        .followRedirects(HttpClient.Redirect.NEVER) // Proxy handles redirects
-                        .build();
+        this.httpClient = buildHttpClient(null);
     }
 
     /**
@@ -61,6 +65,65 @@ public class HttpProxy {
     }
 
     /**
+     * Enable HTTPS interception (Man-in-the-Middle mode).
+     *
+     * <p>When enabled, the proxy will decrypt HTTPS traffic by generating certificates on-the-fly,
+     * allowing interceptors to inspect and modify HTTPS requests and responses.
+     *
+     * <p>Must be called before {@link #start(int)}.
+     *
+     * @return this proxy instance for chaining
+     * @throws IllegalStateException if the proxy is already running
+     */
+    public HttpProxy enableHttpsInterception() {
+        if (running) {
+            throw new IllegalStateException(
+                    "Cannot enable HTTPS interception while proxy is running");
+        }
+        this.httpsInterceptionEnabled = true;
+        logger.info("HTTPS interception enabled");
+        return this;
+    }
+
+    /**
+     * Set the directory in which the CA keystore and certificate files are stored.
+     *
+     * <p>Must be called before {@link #start(int)}. If not set, defaults to the current directory.
+     *
+     * @param storageDir the directory for CA storage
+     * @return this proxy instance for chaining
+     * @throws IllegalStateException if the proxy is already running
+     */
+    public HttpProxy caStorageDir(Path storageDir) {
+        if (running) {
+            throw new IllegalStateException(
+                    "Cannot change CA storage directory while proxy is running");
+        }
+        this.caStorageDir = storageDir;
+        return this;
+    }
+
+    /**
+     * Disable HTTPS interception (pass-through mode).
+     *
+     * <p>When disabled (default), HTTPS traffic passes through encrypted without inspection.
+     *
+     * <p>Must be called before {@link #start(int)}.
+     *
+     * @return this proxy instance for chaining
+     * @throws IllegalStateException if the proxy is already running
+     */
+    public HttpProxy disableHttpsInterception() {
+        if (running) {
+            throw new IllegalStateException(
+                    "Cannot disable HTTPS interception while proxy is running");
+        }
+        this.httpsInterceptionEnabled = false;
+        logger.info("HTTPS interception disabled");
+        return this;
+    }
+
+    /**
      * Execute a request through the proxy. The request will pass through all configured
      * interceptors.
      *
@@ -69,7 +132,7 @@ public class HttpProxy {
      * @throws IOException if an I/O error occurs
      */
     public ProxyResponse execute(ProxyRequest request) throws IOException {
-        logger.info("Executing request: {} {}", request.getMethod(), request.getUri());
+        logger.info("Executing request: {} {}", request.method(), request.uri());
 
         try {
             InterceptorChain chain = new InterceptorChain(interceptors, this::executeActualRequest);
@@ -92,28 +155,28 @@ public class HttpProxy {
      * @return the response
      */
     private ProxyResponse executeActualRequest(ProxyRequest request) {
-        logger.debug("Executing actual HTTP request: {} {}", request.getMethod(), request.getUri());
+        logger.debug("Executing actual HTTP request: {} {}", request.method(), request.uri());
 
         try {
             // Filter headers for forwarding
-            Headers filteredHeaders = HeaderFilter.filterForForwarding(request.getHeaders());
+            Headers filteredHeaders = HeaderFilter.filterForForwarding(request.headers());
 
             // Build HttpRequest
             HttpRequest.Builder builder =
                     HttpRequest.newBuilder()
-                            .uri(request.getUri())
+                            .uri(request.uri())
                             .method(
-                                    request.getMethod(),
-                                    request.getBody().length > 0
-                                            ? BodyPublishers.ofByteArray(request.getBody())
+                                    request.method(),
+                                    request.body().length > 0
+                                            ? BodyPublishers.ofByteArray(request.body())
                                             : BodyPublishers.noBody());
 
-            // Add headers (HttpClient will set Host automatically, so skip it)
+            // Add headers (HttpClient sets Host and Content-Length automatically)
             filteredHeaders.forEach(
                     entry -> {
                         String name = entry.getKey();
-                        // Skip Host header - HttpClient sets it automatically from URI
-                        if (!"Host".equalsIgnoreCase(name)) {
+                        if (!"Host".equalsIgnoreCase(name)
+                                && !"Content-Length".equalsIgnoreCase(name)) {
                             entry.getValue().forEach(value -> builder.header(name, value));
                         }
                     });
@@ -131,14 +194,13 @@ public class HttpProxy {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.error("Request interrupted: {} {}", request.getMethod(), request.getUri(), e);
+            logger.error("Request interrupted: {} {}", request.method(), request.uri(), e);
             return new ProxyResponse(
                     503,
                     Headers.of("Content-Type", "text/plain"),
                     "Service Unavailable: Request interrupted".getBytes());
         } catch (IOException e) {
-            logger.error(
-                    "Error executing request: {} {}", request.getMethod(), request.getUri(), e);
+            logger.error("Error executing request: {} {}", request.method(), request.uri(), e);
             return new ProxyResponse(
                     502,
                     Headers.of("Content-Type", "text/plain"),
@@ -168,12 +230,26 @@ public class HttpProxy {
         }
         this.port = port;
 
+        // Create Certificate Authority if HTTPS interception is enabled
+        if (httpsInterceptionEnabled && certificateAuthority == null) {
+            logger.info("Creating Certificate Authority for HTTPS interception");
+            certificateAuthority =
+                    caStorageDir != null
+                            ? new CertificateAuthority(caStorageDir)
+                            : new CertificateAuthority();
+            // Rebuild HTTP client with trust-all SSL for upstream HTTPS connections
+            this.httpClient = buildHttpClient(createTrustAllSslContext());
+        }
+
         // Create and start the proxy server
-        proxyServer = new ProxyServer(this, port);
+        proxyServer = new ProxyServer(this, port, httpsInterceptionEnabled, certificateAuthority);
         proxyServer.start();
 
         this.running = true;
-        logger.info("Proxy server started on port {}", port);
+        logger.info(
+                "Proxy server started on port {} (HTTPS interception: {})",
+                port,
+                httpsInterceptionEnabled ? "enabled" : "disabled");
     }
 
     /** Stop the proxy server. */
@@ -193,7 +269,7 @@ public class HttpProxy {
      *
      * @return true if running, false otherwise
      */
-    public boolean isRunning() {
+    public boolean running() {
         return running;
     }
 
@@ -202,7 +278,47 @@ public class HttpProxy {
      *
      * @return the port number
      */
-    public int getPort() {
+    public int port() {
         return port;
+    }
+
+    private static HttpClient buildHttpClient(SSLContext sslContext) {
+        HttpClient.Builder builder =
+                HttpClient.newBuilder()
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .followRedirects(HttpClient.Redirect.NEVER);
+        if (sslContext != null) {
+            builder.sslContext(sslContext);
+        }
+        return builder.build();
+    }
+
+    private static SSLContext createTrustAllSslContext() {
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(
+                    null,
+                    new TrustManager[] {
+                        new X509TrustManager() {
+                            @Override
+                            public X509Certificate[] getAcceptedIssuers() {
+                                return new X509Certificate[0];
+                            }
+
+                            @Override
+                            public void checkClientTrusted(
+                                    X509Certificate[] certs, String authType) {}
+
+                            @Override
+                            public void checkServerTrusted(
+                                    X509Certificate[] certs, String authType) {}
+                        }
+                    },
+                    null);
+            return sslContext;
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException("Failed to create trust-all SSL context", e);
+        }
     }
 }

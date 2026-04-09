@@ -84,10 +84,10 @@ public class HttpProxyIntegrationTest {
         ProxyResponse response = proxy.execute(request);
 
         // Verify response
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        assertThat(response.getHeaders().getFirst("Content-Type")).isEqualTo("application/json");
-        assertThat(response.getHeaders().getFirst("X-Custom")).isEqualTo("test-value");
-        assertThat(new String(response.getBody())).isEqualTo("{\"status\":\"ok\"}");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().first("Content-Type")).isEqualTo("application/json");
+        assertThat(response.headers().first("X-Custom")).isEqualTo("test-value");
+        assertThat(new String(response.body())).isEqualTo("{\"status\":\"ok\"}");
 
         // Verify backend received the request
         mockServer.verify(getRequestedFor(urlEqualTo("/api/test")));
@@ -119,9 +119,9 @@ public class HttpProxyIntegrationTest {
         ProxyResponse response = proxy.execute(request);
 
         // Verify response
-        assertThat(response.getStatusCode()).isEqualTo(201);
-        assertThat(response.getHeaders().getFirst("Location")).isEqualTo("/api/data/123");
-        assertThat(new String(response.getBody())).isEqualTo("{\"id\":123}");
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.headers().first("Location")).isEqualTo("/api/data/123");
+        assertThat(new String(response.body())).isEqualTo("{\"id\":123}");
 
         // Verify backend received the request
         mockServer.verify(
@@ -152,7 +152,7 @@ public class HttpProxyIntegrationTest {
         ProxyResponse response = proxy.execute(request);
 
         // Verify response
-        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.statusCode()).isEqualTo(200);
 
         // Verify backend received correct query params
         mockServer.verify(
@@ -189,9 +189,9 @@ public class HttpProxyIntegrationTest {
         // Verify interceptor captured the request
         assertThat(capturedRequests).hasSize(1);
         ProxyRequest captured = capturedRequests.get(0);
-        assertThat(captured.getMethod()).isEqualTo("GET");
-        assertThat(captured.getUri().getPath()).isEqualTo("/api/item");
-        assertThat(captured.getHeaders().getFirst("X-Request-ID")).isEqualTo("12345");
+        assertThat(captured.method()).isEqualTo("GET");
+        assertThat(captured.uri().getPath()).isEqualTo("/api/item");
+        assertThat(captured.headers().first("X-Request-ID")).isEqualTo("12345");
     }
 
     @Test
@@ -252,8 +252,8 @@ public class HttpProxyIntegrationTest {
         ProxyResponse response = proxy.execute(request);
 
         // Verify response was modified
-        assertThat(response.getHeaders().getFirst("X-Proxy-Modified")).isEqualTo("true");
-        assertThat(new String(response.getBody())).isEqualTo("original");
+        assertThat(response.headers().first("X-Proxy-Modified")).isEqualTo("true");
+        assertThat(new String(response.body())).isEqualTo("original");
     }
 
     @Test
@@ -273,7 +273,7 @@ public class HttpProxyIntegrationTest {
                         Headers.empty(),
                         "updated".getBytes());
         ProxyResponse putResponse = proxy.execute(putRequest);
-        assertThat(putResponse.getStatusCode()).isEqualTo(200);
+        assertThat(putResponse.statusCode()).isEqualTo(200);
 
         // Test DELETE
         ProxyRequest deleteRequest =
@@ -283,7 +283,7 @@ public class HttpProxyIntegrationTest {
                         Headers.empty(),
                         null);
         ProxyResponse deleteResponse = proxy.execute(deleteRequest);
-        assertThat(deleteResponse.getStatusCode()).isEqualTo(204);
+        assertThat(deleteResponse.statusCode()).isEqualTo(204);
 
         // Test PATCH
         ProxyRequest patchRequest =
@@ -293,7 +293,7 @@ public class HttpProxyIntegrationTest {
                         Headers.empty(),
                         "patched".getBytes());
         ProxyResponse patchResponse = proxy.execute(patchRequest);
-        assertThat(patchResponse.getStatusCode()).isEqualTo(200);
+        assertThat(patchResponse.statusCode()).isEqualTo(200);
     }
 
     @Test
@@ -313,7 +313,7 @@ public class HttpProxyIntegrationTest {
                         Headers.empty(),
                         null);
         ProxyResponse notFoundResponse = proxy.execute(notFoundRequest);
-        assertThat(notFoundResponse.getStatusCode()).isEqualTo(404);
+        assertThat(notFoundResponse.statusCode()).isEqualTo(404);
 
         // Test 500
         ProxyRequest errorRequest =
@@ -323,6 +323,6 @@ public class HttpProxyIntegrationTest {
                         Headers.empty(),
                         null);
         ProxyResponse errorResponse = proxy.execute(errorRequest);
-        assertThat(errorResponse.getStatusCode()).isEqualTo(500);
+        assertThat(errorResponse.statusCode()).isEqualTo(500);
     }
 }

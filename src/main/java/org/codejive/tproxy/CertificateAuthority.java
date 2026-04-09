@@ -2,6 +2,7 @@ package org.codejive.tproxy;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -25,14 +26,15 @@ import org.slf4j.LoggerFactory;
  * Certificate Authority for generating SSL certificates on-the-fly for HTTPS interception.
  *
  * <p>This class manages a root CA certificate and generates host-specific certificates signed by
- * that CA. The root CA certificate is stored in the current directory and reused across restarts.
+ * that CA. The root CA certificate is stored in a configurable directory and reused across
+ * restarts.
  */
 public class CertificateAuthority {
     private static final Logger logger = LoggerFactory.getLogger(CertificateAuthority.class);
 
     private static final String CA_ALIAS = "tproxy-ca";
-    private static final String CA_KEYSTORE_FILE = "tproxy-ca.p12";
-    private static final String CA_CERT_FILE = "tproxy-ca.crt";
+    private static final String CA_KEYSTORE_FILENAME = "tproxy-ca.p12";
+    private static final String CA_CERT_FILENAME = "tproxy-ca.crt";
     private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final int KEY_SIZE = 2048;
@@ -50,17 +52,30 @@ public class CertificateAuthority {
     private final PrivateKey caPrivateKey;
 
     /**
-     * Create a new Certificate Authority. If a CA keystore exists in the current directory, it will
-     * be loaded. Otherwise, a new CA certificate will be generated.
+     * Create a new Certificate Authority using the current directory for storage. If a CA keystore
+     * exists, it will be loaded. Otherwise, a new CA certificate will be generated.
      *
      * @throws IOException if there is an error loading or creating the CA
      */
     public CertificateAuthority() throws IOException {
+        this(Path.of("."));
+    }
+
+    /**
+     * Create a new Certificate Authority using the specified directory for storage. If a CA
+     * keystore exists in the directory, it will be loaded. Otherwise, a new CA certificate will be
+     * generated.
+     *
+     * @param storageDir the directory in which to store the CA keystore and certificate files
+     * @throws IOException if there is an error loading or creating the CA
+     */
+    public CertificateAuthority(Path storageDir) throws IOException {
         try {
-            File keystoreFile = new File(CA_KEYSTORE_FILE);
+            File keystoreFile = storageDir.resolve(CA_KEYSTORE_FILENAME).toFile();
+            File certFile = storageDir.resolve(CA_CERT_FILENAME).toFile();
 
             if (keystoreFile.exists()) {
-                logger.info("Loading existing CA from {}", CA_KEYSTORE_FILE);
+                logger.info("Loading existing CA from {}", keystoreFile);
                 caKeyStore = loadKeyStore(keystoreFile);
             } else {
                 logger.info("Generating new CA certificate");
@@ -77,8 +92,8 @@ public class CertificateAuthority {
             }
 
             // Export CA certificate if it was just generated
-            if (!keystoreFile.exists() || !new File(CA_CERT_FILE).exists()) {
-                exportCACertificate(caCertificate);
+            if (!certFile.exists()) {
+                exportCACertificate(caCertificate, certFile);
             }
 
             logger.info("CA initialized: {}", caCertificate.getSubjectX500Principal());
@@ -177,7 +192,7 @@ public class CertificateAuthority {
      *
      * @return the CA certificate
      */
-    public X509Certificate getCACertificate() {
+    public X509Certificate caCertificate() {
         return caCertificate;
     }
 
@@ -260,8 +275,7 @@ public class CertificateAuthority {
     }
 
     /** Export CA certificate to PEM file for easy import into browsers. */
-    private void exportCACertificate(X509Certificate cert) throws Exception {
-        File certFile = new File(CA_CERT_FILE);
+    private void exportCACertificate(X509Certificate cert, File certFile) throws Exception {
         try (FileWriter fw = new FileWriter(certFile)) {
             fw.write("-----BEGIN CERTIFICATE-----\n");
             fw.write(

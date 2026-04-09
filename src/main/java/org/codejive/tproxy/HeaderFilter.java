@@ -70,26 +70,4 @@ public final class HeaderFilter {
 
         return Headers.of(filtered);
     }
-
-    /**
-     * Check if a header should be filtered (removed) when forwarding.
-     *
-     * @param headerName the header name (case-insensitive)
-     * @return true if the header should be removed, false otherwise
-     */
-    public static boolean shouldFilter(String headerName) {
-        String nameLower = headerName.toLowerCase(Locale.ROOT);
-        return HOP_BY_HOP_HEADERS.contains(nameLower) || PROXY_SPECIFIC_HEADERS.contains(nameLower);
-    }
-
-    /**
-     * Add or update the Host header based on the target URI.
-     *
-     * @param headers the current headers
-     * @param host the target host (e.g., "example.com:443")
-     * @return headers with updated Host header
-     */
-    public static Headers withHost(Headers headers, String host) {
-        return headers.with("Host", host);
-    }
 }

@@ -20,19 +20,19 @@ public class ProxyRequest {
         this.body = body != null ? body.clone() : new byte[0];
     }
 
-    public String getMethod() {
+    public String method() {
         return method;
     }
 
-    public URI getUri() {
+    public URI uri() {
         return uri;
     }
 
-    public Headers getHeaders() {
+    public Headers headers() {
         return headers;
     }
 
-    public byte[] getBody() {
+    public byte[] body() {
         return body.clone();
     }
 

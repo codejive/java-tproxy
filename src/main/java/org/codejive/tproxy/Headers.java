@@ -54,7 +54,7 @@ public final class Headers implements Iterable<Map.Entry<String, List<String>>> 
      *
      * @return the values, or an empty list if the header is not present
      */
-    public List<String> getAll(String name) {
+    public List<String> all(String name) {
         List<String> values = map.get(name);
         return values != null ? values : List.of();
     }
@@ -64,7 +64,7 @@ public final class Headers implements Iterable<Map.Entry<String, List<String>>> 
      *
      * @return the first value, or {@code null} if the header is not present
      */
-    public String getFirst(String name) {
+    public String first(String name) {
         List<String> values = map.get(name);
         return (values != null && !values.isEmpty()) ? values.get(0) : null;
     }

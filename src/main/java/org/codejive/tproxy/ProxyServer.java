@@ -7,13 +7,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.Executors;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
 import org.eclipse.jetty.proxy.ConnectHandler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +35,8 @@ class ProxyServer {
 
     private final HttpProxy httpProxy;
     private final int port;
+    private final boolean httpsInterceptionEnabled;
+    private final CertificateAuthority certificateAuthority;
     private Server server;
 
     /**
@@ -34,10 +44,23 @@ class ProxyServer {
      *
      * @param httpProxy the HTTP proxy to delegate requests to
      * @param port the port to listen on
+     * @param httpsInterceptionEnabled whether to enable HTTPS interception
+     * @param certificateAuthority the certificate authority (required if interception enabled)
      */
-    ProxyServer(HttpProxy httpProxy, int port) {
+    ProxyServer(
+            HttpProxy httpProxy,
+            int port,
+            boolean httpsInterceptionEnabled,
+            CertificateAuthority certificateAuthority) {
         this.httpProxy = httpProxy;
         this.port = port;
+        this.httpsInterceptionEnabled = httpsInterceptionEnabled;
+        this.certificateAuthority = certificateAuthority;
+
+        if (httpsInterceptionEnabled && certificateAuthority == null) {
+            throw new IllegalArgumentException(
+                    "CertificateAuthority is required when HTTPS interception is enabled");
+        }
     }
 
     /**
@@ -60,10 +83,6 @@ class ProxyServer {
             connector.setHost("127.0.0.1"); // Bind to localhost for testing
             server.addConnector(connector);
 
-            // Create CONNECT handler for HTTPS tunneling
-            ConnectHandler connectHandler = new ConnectHandler();
-            connectHandler.setConnectTimeout(30000); // 30 seconds
-
             // Create servlet context for regular HTTP requests
             ServletContextHandler servletContext =
                     new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -71,11 +90,43 @@ class ProxyServer {
             ServletHolder servletHolder = new ServletHolder(new ProxyServlet());
             servletContext.addServlet(servletHolder, "/*");
 
-            // Connect handler wraps servlet context
-            connectHandler.setHandler(servletContext);
+            // Create CONNECT handler based on interception mode
+            if (httpsInterceptionEnabled) {
+                // Create SSL context with certificate-generating key manager
+                SSLContext sslContext = createMitmSslContext();
 
-            // Set handler
-            server.setHandler(connectHandler);
+                SslContextFactory.Server sslFactory = new SslContextFactory.Server();
+                sslFactory.setSslContext(sslContext);
+                sslFactory.setSniRequired(false);
+
+                // Configure HTTP after SSL termination
+                HttpConfiguration httpConfig = new HttpConfiguration();
+                SecureRequestCustomizer secureCustomizer = new SecureRequestCustomizer();
+                secureCustomizer.setSniHostCheck(false);
+                httpConfig.addCustomizer(secureCustomizer);
+
+                // Create MITM connector: SSL termination → HTTP parsing
+                SslConnectionFactory ssl = new SslConnectionFactory(sslFactory, "http/1.1");
+                HttpConnectionFactory http = new HttpConnectionFactory(httpConfig);
+                ServerConnector mitmConnector = new ServerConnector(server, ssl, http);
+                mitmConnector.setPort(0); // Random available port
+                mitmConnector.setHost("127.0.0.1");
+                server.addConnector(mitmConnector);
+
+                // Use intercepting handler that redirects CONNECT tunnels to MITM connector
+                logger.info("Using InterceptingConnectHandler for HTTPS MITM");
+                InterceptingConnectHandler connectHandler =
+                        new InterceptingConnectHandler(mitmConnector);
+                connectHandler.setHandler(servletContext);
+                server.setHandler(connectHandler);
+            } else {
+                // Use standard pass-through handler
+                logger.info("Using standard ConnectHandler for HTTPS pass-through");
+                ConnectHandler connectHandler = new ConnectHandler();
+                connectHandler.setConnectTimeout(30000); // 30 seconds
+                connectHandler.setHandler(servletContext);
+                server.setHandler(connectHandler);
+            }
 
             // Start the server
             server.start();
@@ -103,8 +154,26 @@ class ProxyServer {
      *
      * @return true if running, false otherwise
      */
-    boolean isRunning() {
+    boolean running() {
         return server != null && server.isRunning();
+    }
+
+    /**
+     * Create an SSLContext with a key manager that generates certificates on-the-fly.
+     *
+     * @return the configured SSLContext
+     * @throws IOException if SSL context creation fails
+     */
+    private SSLContext createMitmSslContext() throws IOException {
+        try {
+            CertificateGeneratingKeyManager keyManager =
+                    new CertificateGeneratingKeyManager(certificateAuthority);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(new KeyManager[] {keyManager}, null, null);
+            return sslContext;
+        } catch (GeneralSecurityException e) {
+            throw new IOException("Failed to create MITM SSL context", e);
+        }
     }
 
     /** Servlet that handles all HTTP requests and delegates to the HttpProxy. */
@@ -232,11 +301,11 @@ class ProxyServer {
                 throws IOException {
 
             // Set status code
-            resp.setStatus(proxyResponse.getStatusCode());
+            resp.setStatus(proxyResponse.statusCode());
 
             // Set headers
             proxyResponse
-                    .getHeaders()
+                    .headers()
                     .forEach(
                             entry -> {
                                 String name = entry.getKey();
@@ -246,7 +315,7 @@ class ProxyServer {
                             });
 
             // Write body
-            byte[] body = proxyResponse.getBody();
+            byte[] body = proxyResponse.body();
             if (body != null && body.length > 0) {
                 resp.getOutputStream().write(body);
             }

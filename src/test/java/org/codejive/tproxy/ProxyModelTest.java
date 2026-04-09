@@ -21,10 +21,10 @@ public class ProxyModelTest {
 
         ProxyRequest request = new ProxyRequest("GET", uri, headers, body);
 
-        assertThat(request.getMethod()).isEqualTo("GET");
-        assertThat(request.getUri()).isEqualTo(uri);
-        assertThat(request.getHeaders().getFirst("Content-Type")).isEqualTo("application/json");
-        assertThat(request.getBody()).isEqualTo(body);
+        assertThat(request.method()).isEqualTo("GET");
+        assertThat(request.uri()).isEqualTo(uri);
+        assertThat(request.headers().first("Content-Type")).isEqualTo("application/json");
+        assertThat(request.body()).isEqualTo(body);
     }
 
     @Test
@@ -34,8 +34,8 @@ public class ProxyModelTest {
 
         ProxyRequest request = new ProxyRequest("GET", uri, Headers.empty(), null);
 
-        assertThat(request.getBody()).isNotNull();
-        assertThat(request.getBody()).isEmpty();
+        assertThat(request.body()).isNotNull();
+        assertThat(request.body()).isEmpty();
     }
 
     @Test
@@ -45,20 +45,20 @@ public class ProxyModelTest {
         ProxyRequest original = new ProxyRequest("GET", uri, Headers.empty(), null);
 
         ProxyRequest withMethod = original.withMethod("POST");
-        assertThat(withMethod.getMethod()).isEqualTo("POST");
-        assertThat(withMethod.getUri()).isEqualTo(uri);
+        assertThat(withMethod.method()).isEqualTo("POST");
+        assertThat(withMethod.uri()).isEqualTo(uri);
 
         URI newUri = URI.create("https://other.example.com");
         ProxyRequest withUri = original.withUri(newUri);
-        assertThat(withUri.getUri()).isEqualTo(newUri);
-        assertThat(withUri.getMethod()).isEqualTo("GET");
+        assertThat(withUri.uri()).isEqualTo(newUri);
+        assertThat(withUri.method()).isEqualTo("GET");
 
         ProxyRequest withHeader = original.withHeader("X-Custom", "value");
-        assertThat(withHeader.getHeaders().getFirst("X-Custom")).isEqualTo("value");
+        assertThat(withHeader.headers().first("X-Custom")).isEqualTo("value");
 
         byte[] newBody = "new body".getBytes();
         ProxyRequest withBody = original.withBody(newBody);
-        assertThat(withBody.getBody()).isEqualTo(newBody);
+        assertThat(withBody.body()).isEqualTo(newBody);
     }
 
     @Test
@@ -69,7 +69,7 @@ public class ProxyModelTest {
 
         ProxyRequest request = new ProxyRequest("GET", uri, headers, null);
 
-        assertThat(request.getHeaders().getAll("Accept"))
+        assertThat(request.headers().all("Accept"))
                 .containsExactly("text/html", "application/json");
     }
 
@@ -78,8 +78,8 @@ public class ProxyModelTest {
     public void testHeadersCaseInsensitive() {
         Headers headers = Headers.of("Content-Type", "application/json");
 
-        assertThat(headers.getFirst("content-type")).isEqualTo("application/json");
-        assertThat(headers.getFirst("CONTENT-TYPE")).isEqualTo("application/json");
+        assertThat(headers.first("content-type")).isEqualTo("application/json");
+        assertThat(headers.first("CONTENT-TYPE")).isEqualTo("application/json");
         assertThat(headers.contains("content-type")).isTrue();
     }
 
@@ -91,9 +91,9 @@ public class ProxyModelTest {
 
         ProxyResponse response = new ProxyResponse(200, headers, body);
 
-        assertThat(response.getStatusCode()).isEqualTo(200);
-        assertThat(response.getHeaders().getFirst("Content-Type")).isEqualTo("application/json");
-        assertThat(response.getBody()).isEqualTo(body);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().first("Content-Type")).isEqualTo("application/json");
+        assertThat(response.body()).isEqualTo(body);
     }
 
     @Test
@@ -101,8 +101,8 @@ public class ProxyModelTest {
     public void testProxyResponseNullBody() {
         ProxyResponse response = new ProxyResponse(204, Headers.empty(), null);
 
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody()).isEmpty();
+        assertThat(response.body()).isNotNull();
+        assertThat(response.body()).isEmpty();
     }
 
     @Test
@@ -111,14 +111,14 @@ public class ProxyModelTest {
         ProxyResponse original = new ProxyResponse(200, Headers.empty(), "body".getBytes());
 
         ProxyResponse withStatus = original.withStatusCode(404);
-        assertThat(withStatus.getStatusCode()).isEqualTo(404);
-        assertThat(withStatus.getBody()).isEqualTo("body".getBytes());
+        assertThat(withStatus.statusCode()).isEqualTo(404);
+        assertThat(withStatus.body()).isEqualTo("body".getBytes());
 
         ProxyResponse withHeader = original.withHeader("X-Custom", "value");
-        assertThat(withHeader.getHeaders().getFirst("X-Custom")).isEqualTo("value");
+        assertThat(withHeader.headers().first("X-Custom")).isEqualTo("value");
 
         ProxyResponse withBody = original.withBody("new".getBytes());
-        assertThat(withBody.getBody()).isEqualTo("new".getBytes());
-        assertThat(withBody.getStatusCode()).isEqualTo(200);
+        assertThat(withBody.body()).isEqualTo("new".getBytes());
+        assertThat(withBody.statusCode()).isEqualTo(200);
     }
 }

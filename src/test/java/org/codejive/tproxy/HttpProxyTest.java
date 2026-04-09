@@ -22,7 +22,7 @@ public class HttpProxyTest {
     @DisplayName("Should create proxy instance")
     public void testProxyCreation() {
         assertThat(proxy).isNotNull();
-        assertThat(proxy.isRunning()).isFalse();
+        assertThat(proxy.running()).isFalse();
     }
 
     @Test
@@ -53,7 +53,7 @@ public class HttpProxyTest {
         ProxyResponse response = proxy.execute(request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.statusCode()).isEqualTo(200);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class HttpProxyTest {
         ProxyResponse response = proxy.execute(request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatusCode()).isEqualTo(201);
+        assertThat(response.statusCode()).isEqualTo(201);
     }
 
     @Test
@@ -86,7 +86,7 @@ public class HttpProxyTest {
         proxy.addInterceptor(
                 (request, chain) -> {
                     ProxyResponse response = chain.proceed(request);
-                    log.append("status=").append(response.getStatusCode());
+                    log.append("status=").append(response.statusCode());
                     return response;
                 });
 
@@ -102,21 +102,21 @@ public class HttpProxyTest {
 
         ProxyResponse response = proxy.execute(request);
 
-        assertThat(response.getStatusCode()).isEqualTo(418);
+        assertThat(response.statusCode()).isEqualTo(418);
         assertThat(log.toString()).isEqualTo("status=418"); // outer interceptor saw the mock
     }
 
     @Test
     @DisplayName("Should start and stop proxy server")
     public void testServerLifecycle() throws Exception {
-        assertThat(proxy.isRunning()).isFalse();
+        assertThat(proxy.running()).isFalse();
 
         proxy.start(8888);
-        assertThat(proxy.isRunning()).isTrue();
-        assertThat(proxy.getPort()).isEqualTo(8888);
+        assertThat(proxy.running()).isTrue();
+        assertThat(proxy.port()).isEqualTo(8888);
 
         proxy.stop();
-        assertThat(proxy.isRunning()).isFalse();
+        assertThat(proxy.running()).isFalse();
     }
 
     @Test
