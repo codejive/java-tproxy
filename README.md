@@ -1,4 +1,4 @@
-# Java Transparent Proxy (java-tproxy)
+# Java Transparent Proxy
 
 A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support, built on Jetty 11 and Java 21 virtual threads.
 
