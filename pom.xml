@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>Java Transparent Proxy</name>
-    <description>A transparent proxy library for intercepting and replaying HTTP/HTTPS requests in unit tests</description>
+    <description>A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
