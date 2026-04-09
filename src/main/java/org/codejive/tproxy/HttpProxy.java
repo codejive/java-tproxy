@@ -1,6 +1,8 @@
 package org.codejive.tproxy;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -280,6 +282,20 @@ public class HttpProxy {
      */
     public int port() {
         return port;
+    }
+
+    /**
+     * Configure an HttpClient.Builder to use this proxy.
+     *
+     * @param builder the HttpClient.Builder to configure
+     * @return the same builder instance for chaining
+     * @throws IllegalStateException if the proxy is not running
+     */
+    public HttpClient.Builder configureClient(HttpClient.Builder builder) {
+        if (!running) {
+            throw new IllegalStateException("Proxy must be running before configuring clients");
+        }
+        return builder.proxy(ProxySelector.of(new InetSocketAddress("localhost", port)));
     }
 
     private static HttpClient buildHttpClient(SSLContext sslContext) {
