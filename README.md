@@ -174,4 +174,6 @@ src/main/java/org/codejive/tproxy/
 
 ## License
 
-For educational and testing purposes. Use responsibly in controlled environments.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+**Security Warning:** This tool performs man-in-the-middle HTTPS interception. Use only for educational and testing purposes in controlled environments where you have proper authorization.
