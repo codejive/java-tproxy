@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.Executors;
+import org.eclipse.jetty.proxy.ConnectHandler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -59,15 +60,22 @@ class ProxyServer {
             connector.setHost("127.0.0.1"); // Bind to localhost for testing
             server.addConnector(connector);
 
-            // Create servlet context
-            ServletContextHandler context =
+            // Create CONNECT handler for HTTPS tunneling
+            ConnectHandler connectHandler = new ConnectHandler();
+            connectHandler.setConnectTimeout(30000); // 30 seconds
+            
+            // Create servlet context for regular HTTP requests  
+            ServletContextHandler servletContext =
                     new ServletContextHandler(ServletContextHandler.SESSIONS);
-            context.setContextPath("/");
-            server.setHandler(context);
-
-            // Add proxy servlet
+            servletContext.setContextPath("/");
             ServletHolder servletHolder = new ServletHolder(new ProxyServlet());
-            context.addServlet(servletHolder, "/*");
+            servletContext.addServlet(servletHolder, "/*");
+
+            // Connect handler wraps servlet context
+            connectHandler.setHandler(servletContext);
+            
+            // Set handler
+            server.setHandler(connectHandler);
 
             // Start the server
             server.start();
@@ -108,6 +116,14 @@ class ProxyServer {
 
             String method = req.getMethod();
             logger.debug("Received {} request: {}", method, req.getRequestURL());
+
+            // CONNECT is handled by ConnectHandler, so we should not see it here
+            if ("CONNECT".equalsIgnoreCase(method)) {
+                resp.sendError(
+                        HttpServletResponse.SC_METHOD_NOT_ALLOWED,
+                        "CONNECT should be handled by ConnectHandler");
+                return;
+            }
 
             try {
                 // Build the target URI
