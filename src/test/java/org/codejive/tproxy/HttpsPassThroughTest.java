@@ -34,12 +34,10 @@ public class HttpsPassThroughTest {
 
     @BeforeEach
     public void setUp() throws IOException {
-        // Start HTTPS WireMock server on fixed port  
+        // Start HTTPS WireMock server on fixed port
         httpsServer =
                 new WireMockServer(
-                        options()
-                                .httpsPort(HTTPS_BACKEND_PORT)
-                                .bindAddress("localhost"));
+                        options().httpsPort(HTTPS_BACKEND_PORT).bindAddress("localhost"));
         httpsServer.start();
 
         // Create and start proxy
@@ -49,7 +47,7 @@ public class HttpsPassThroughTest {
         // Create HTTP client configured to use the proxy and trust all certificates
         try {
             SSLContext sslContext = createTrustAllSSLContext();
-            
+
             httpClient =
                     HttpClient.newBuilder()
                             .proxy(
@@ -100,7 +98,8 @@ public class HttpsPassThroughTest {
                         .GET()
                         .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response =
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         // Verify response
         assertThat(response.statusCode()).isEqualTo(200);
@@ -131,7 +130,8 @@ public class HttpsPassThroughTest {
                         .POST(HttpRequest.BodyPublishers.ofString("{\"data\":\"secret\"}"))
                         .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response =
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         // Verify response
         assertThat(response.statusCode()).isEqualTo(201);
@@ -197,7 +197,8 @@ public class HttpsPassThroughTest {
                         .GET()
                         .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response =
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         // Verify response
         assertThat(response.statusCode()).isEqualTo(200);

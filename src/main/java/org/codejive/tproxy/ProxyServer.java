@@ -63,8 +63,8 @@ class ProxyServer {
             // Create CONNECT handler for HTTPS tunneling
             ConnectHandler connectHandler = new ConnectHandler();
             connectHandler.setConnectTimeout(30000); // 30 seconds
-            
-            // Create servlet context for regular HTTP requests  
+
+            // Create servlet context for regular HTTP requests
             ServletContextHandler servletContext =
                     new ServletContextHandler(ServletContextHandler.SESSIONS);
             servletContext.setContextPath("/");
@@ -73,7 +73,7 @@ class ProxyServer {
 
             // Connect handler wraps servlet context
             connectHandler.setHandler(servletContext);
-            
+
             // Set handler
             server.setHandler(connectHandler);
 
