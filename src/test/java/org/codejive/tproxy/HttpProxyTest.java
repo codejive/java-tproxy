@@ -38,6 +38,14 @@ public class HttpProxyTest {
     @Test
     @DisplayName("Should execute request without interceptors")
     public void testExecuteWithoutInterceptors() throws Exception {
+        // Add a short-circuit interceptor to avoid real network call
+        proxy.addInterceptor(
+                (request, chain) ->
+                        new ProxyResponse(
+                                200,
+                                Headers.of("Content-Type", "text/plain"),
+                                "Mock response".getBytes()));
+
         ProxyRequest request =
                 new ProxyRequest(
                         "GET", URI.create("http://example.com/test"), Headers.empty(), null);

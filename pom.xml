@@ -27,6 +27,9 @@
         <version.junit>5.10.2</version.junit>
         <version.assertj>3.27.7</version.assertj>
         <version.wiremock>3.4.2</version.wiremock>
+        <version.jetty>11.0.24</version.jetty>
+        <version.bouncycastle>1.78.1</version.bouncycastle>
+        <version.jakarta-servlet>5.0.0</version.jakarta-servlet>
         
         <!-- Plugin versions -->
         <version.spotless>3.4.0</version.spotless>
@@ -59,6 +62,35 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${version.slf4j}</version>
+        </dependency>
+        
+        <!-- Jetty for HTTP/HTTPS server -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>${version.jetty}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>${version.jetty}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>${version.jakarta-servlet}</version>
+        </dependency>
+        
+        <!-- BouncyCastle for certificate generation -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${version.bouncycastle}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${version.bouncycastle}</version>
         </dependency>
 
         <!-- Runtime dependencies -->

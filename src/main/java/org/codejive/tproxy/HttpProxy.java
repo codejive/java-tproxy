@@ -1,6 +1,11 @@
 package org.codejive.tproxy;
 
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -16,8 +21,19 @@ public class HttpProxy {
     private static final Logger logger = LoggerFactory.getLogger(HttpProxy.class);
 
     private final List<Interceptor> interceptors = new ArrayList<>();
+    private final HttpClient httpClient;
+    private ProxyServer proxyServer;
     private boolean running = false;
     private int port;
+
+    public HttpProxy() {
+        this.httpClient =
+                HttpClient.newBuilder()
+                        .version(HttpClient.Version.HTTP_1_1) // Start with HTTP/1.1
+                        .connectTimeout(Duration.ofSeconds(30))
+                        .followRedirects(HttpClient.Redirect.NEVER) // Proxy handles redirects
+                        .build();
+    }
 
     /**
      * Add an interceptor to the proxy. Interceptors are invoked in the order they are added;
@@ -78,12 +94,66 @@ public class HttpProxy {
     private ProxyResponse executeActualRequest(ProxyRequest request) {
         logger.debug("Executing actual HTTP request: {} {}", request.getMethod(), request.getUri());
 
-        // TODO: Implement actual HTTP client call
-        // For now, return a mock response
-        return new ProxyResponse(
-                200,
-                Headers.of("Content-Type", "text/plain"),
-                "Mock response from proxy".getBytes());
+        try {
+            // Filter headers for forwarding
+            Headers filteredHeaders = HeaderFilter.filterForForwarding(request.getHeaders());
+
+            // Build HttpRequest
+            HttpRequest.Builder builder =
+                    HttpRequest.newBuilder()
+                            .uri(request.getUri())
+                            .method(
+                                    request.getMethod(),
+                                    request.getBody().length > 0
+                                            ? BodyPublishers.ofByteArray(request.getBody())
+                                            : BodyPublishers.noBody());
+
+            // Add headers (HttpClient will set Host automatically, so skip it)
+            filteredHeaders.forEach(
+                    entry -> {
+                        String name = entry.getKey();
+                        // Skip Host header - HttpClient sets it automatically from URI
+                        if (!"Host".equalsIgnoreCase(name)) {
+                            entry.getValue().forEach(value -> builder.header(name, value));
+                        }
+                    });
+
+            HttpRequest httpRequest = builder.build();
+
+            // Execute request
+            HttpResponse<byte[]> httpResponse =
+                    httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+
+            // Convert response
+            Headers responseHeaders = convertResponseHeaders(httpResponse);
+            return new ProxyResponse(
+                    httpResponse.statusCode(), responseHeaders, httpResponse.body());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Request interrupted: {} {}", request.getMethod(), request.getUri(), e);
+            return new ProxyResponse(
+                    503,
+                    Headers.of("Content-Type", "text/plain"),
+                    "Service Unavailable: Request interrupted".getBytes());
+        } catch (IOException e) {
+            logger.error(
+                    "Error executing request: {} {}", request.getMethod(), request.getUri(), e);
+            return new ProxyResponse(
+                    502,
+                    Headers.of("Content-Type", "text/plain"),
+                    ("Bad Gateway: " + e.getMessage()).getBytes());
+        }
+    }
+
+    /**
+     * Convert HttpResponse headers to our Headers model.
+     *
+     * @param httpResponse the HTTP response
+     * @return converted headers
+     */
+    private Headers convertResponseHeaders(HttpResponse<byte[]> httpResponse) {
+        return Headers.of(httpResponse.headers().map());
     }
 
     /**
@@ -97,19 +167,24 @@ public class HttpProxy {
             throw new IllegalStateException("Proxy is already running");
         }
         this.port = port;
+
+        // Create and start the proxy server
+        proxyServer = new ProxyServer(this, port);
+        proxyServer.start();
+
         this.running = true;
         logger.info("Proxy server started on port {}", port);
-
-        // TODO: Implement actual server startup
     }
 
     /** Stop the proxy server. */
     public void stop() {
         if (running) {
+            if (proxyServer != null) {
+                proxyServer.stop();
+                proxyServer = null;
+            }
             running = false;
             logger.info("Proxy server stopped");
-
-            // TODO: Implement actual server shutdown
         }
     }
 
