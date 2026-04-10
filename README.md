@@ -1,20 +1,14 @@
 # Java Transparent Proxy
 
-A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support, built on Jetty 11 and Java 21 virtual threads.
+A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support.
 
 ## Features
 
-- **HTTP Proxy** — Full HTTP/1.1 proxy with RFC 7230 hop-by-hop header filtering
+- **HTTP Proxy** — Full HTTP/1.1 proxy
 - **HTTPS Interception** — Man-in-the-Middle mode with on-the-fly certificate generation
 - **HTTPS Pass-through** — Secure tunneling via CONNECT (no decryption)
 - **Pluggable Interceptors** — Chain-of-responsibility for inspecting/modifying requests and responses
-- **Virtual Threads** — Java 21 virtual threads for high concurrency
 - **Certificate Authority** — Auto-generated CA with per-hostname server certificates (BouncyCastle)
-
-## Requirements
-
-- Java 21+
-- Maven 3.6+
 
 ## Usage
 
@@ -145,29 +139,10 @@ proxy.start(8080); // HTTPS passes through unmodified
 ./mvnw package     # Package JAR
 ```
 
-## Project Structure
+## Requirements
 
-```
-src/main/java/org/codejive/tproxy/
-├── HttpProxy.java                      # Main proxy class
-├── ProxyServer.java                    # Jetty server setup
-├── Interceptor.java                    # Interceptor interface
-├── InterceptorChain.java               # Chain-of-responsibility
-├── ProxyRequest.java                   # Immutable request model
-├── ProxyResponse.java                  # Immutable response model
-├── Headers.java                        # Case-insensitive header map
-├── HeaderFilter.java                   # RFC 7230 header filtering
-├── CertificateAuthority.java           # CA and cert generation
-├── CertificateGeneratingKeyManager.java # SNI-based dynamic certs
-└── InterceptingConnectHandler.java     # MITM CONNECT handler
-```
-
-## Dependencies
-
-- **Jetty 11.0.24** — HTTP server, proxy, servlet
-- **BouncyCastle 1.78.1** — Certificate generation
-- **SLF4J 2.0.17** — Logging
-- **JUnit 5 / AssertJ / WireMock 3.4.2** — Testing
+- Java 21+
+- Maven 3.6+
 
 ## License
 

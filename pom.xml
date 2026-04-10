@@ -12,6 +12,35 @@
 
     <name>Java Transparent Proxy</name>
     <description>A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support</description>
+    <url>https://github.com/codejive/java-tproxy</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>codejive</id>
+            <name>Tako Schotanus</name>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/codejive/java-tproxy.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/codejive/java-tproxy.git</developerConnection>
+        <url>https://github.com/codejive/java-tproxy</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/codejive/java-tproxy/issues</url>
+    </issueManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -37,6 +66,10 @@
         <version.maven-enforcer>3.6.2</version.maven-enforcer>
         <version.maven-compiler>3.15.0</version.maven-compiler>
         <version.maven-surefire>3.5.5</version.maven-surefire>
+        <version.maven-javadoc>3.12.0</version.maven-javadoc>
+        <version.maven-source>3.3.1</version.maven-source>
+        <version.jreleaser>1.14.0</version.jreleaser>
+        <version.build-helper>3.6.0</version.build-helper>
     </properties>
 
     <dependencyManagement>
@@ -162,6 +195,26 @@
                     <artifactId>spotless-maven-plugin</artifactId>
                     <version>${version.spotless}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${version.maven-javadoc}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${version.maven-source}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jreleaser</groupId>
+                    <artifactId>jreleaser-maven-plugin</artifactId>
+                    <version>${version.jreleaser}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${version.build-helper}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         
@@ -254,6 +307,115 @@
                     </execution>
                 </executions>
             </plugin>
+            
+            <!-- JReleaser Plugin -->
+            <plugin>
+                <groupId>org.jreleaser</groupId>
+                <artifactId>jreleaser-maven-plugin</artifactId>
+                <configuration>
+                    <configFile>${project.basedir}/jreleaser.yml</configFile>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <distributionManagement>
+        <repository>
+            <id>jreleaser</id>
+            <url>https://central.sonatype.com/api/v1/publisher</url>
+        </repository>
+    </distributionManagement>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <defaultGoal>deploy</defaultGoal>
+                <plugins>
+                    <!-- Generate Javadoc JAR -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <attach>true</attach>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    
+                    <!-- Generate Sources JAR -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                                <configuration>
+                                    <attach>true</attach>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    
+                    <!-- Stage artifacts for JReleaser -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-install-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-install</id>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-deploy-plugin</artifactId>
+                        <configuration>
+                            <altDeploymentRepository>local::file:./target/staging-deploy</altDeploymentRepository>
+                        </configuration>
+                    </plugin>
+                    
+                    <!-- JReleaser deployment -->
+                    <plugin>
+                        <groupId>org.jreleaser</groupId>
+                        <artifactId>jreleaser-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jreleaser-deploy</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>deploy</goal>
+                                </goals>
+                                <configuration>
+                                    <jreleaser>
+                                        <deploy>
+                                            <maven>
+                                                <mavenCentral>
+                                                    <tproxy>
+                                                        <active>RELEASE</active>
+                                                    </tproxy>
+                                                </mavenCentral>
+                                            </maven>
+                                        </deploy>
+                                    </jreleaser>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

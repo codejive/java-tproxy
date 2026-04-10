@@ -1,0 +1,71 @@
+# JReleaser configuration for java-tproxy library
+# Publishes to Maven Central and GitHub Releases
+# Requires GPG signing for Maven Central
+
+project:
+  name: tproxy
+  description: A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support
+  longDescription: |
+    Java Transparent Proxy is a lightweight HTTP/HTTPS proxy library.
+    
+    Key features:
+    - Full HTTP/1.1 proxy
+    - Man-in-the-Middle mode with on-the-fly certificate generation for HTTPS interception
+    - Secure tunneling via CONNECT for HTTPS pass-through (no decryption)
+    - Pluggable interceptors with chain-of-responsibility pattern
+    - Auto-generated CA with per-hostname server certificates using BouncyCastle
+  authors:
+    - Tako Schotanus
+  tags:
+    - java
+    - proxy
+    - http
+    - https
+    - mitm
+    - interceptor
+    - library
+  license: Apache-2.0
+  links:
+    homepage: https://github.com/codejive/java-tproxy
+  java:
+    groupId: org.codejive.tproxy
+    version: '21'
+  inceptionYear: '2026'
+  stereotype: NONE
+
+# No assembly needed for libraries - Maven handles JARs
+assemble:
+  enabled: false
+
+# Maven Central deployment configuration
+deploy:
+  maven:
+    mavenCentral:
+      tproxy:
+        active: RELEASE  # Only deploy non-SNAPSHOT versions
+        url: https://central.sonatype.com/api/v1/publisher
+        stagingRepositories:
+          - target/staging-deploy
+
+# GitHub release configuration
+release:
+  github:
+    owner: codejive
+    name: java-tproxy
+    overwrite: true
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        format: '- {{contributorName}}{{#contributorUsernameAsLink}} ({{.}}){{/contributorUsernameAsLink}}'
+
+# Checksum generation
+checksum:
+  individual: true
+
+# GPG signing - REQUIRED for Maven Central
+signing:
+  active: ALWAYS
+  armored: true
+
+# No distributions section needed for library-only projects
