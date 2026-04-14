@@ -24,6 +24,6 @@ java: 21
 dependencies:
 actions:
   clean: ./mvnw clean
-  build: ./mvnw spotless:apply package -DskipTests
+  build: ./mvnw spotless:apply install -DskipTests
   test: ./mvnw test
   format: ./mvnw spotless:apply
