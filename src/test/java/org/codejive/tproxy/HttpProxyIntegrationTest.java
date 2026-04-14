@@ -7,7 +7,6 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.*;
@@ -22,7 +21,6 @@ public class HttpProxyIntegrationTest {
 
     private HttpProxy proxy;
     private WireMockServer mockServer;
-    private HttpClient httpClient;
 
     @BeforeEach
     public void setUp() throws IOException {
@@ -37,9 +35,6 @@ public class HttpProxyIntegrationTest {
         // Create and start proxy
         proxy = new HttpProxy();
         proxy.start(PROXY_PORT);
-
-        // Create HTTP client for manual testing (not using proxy)
-        httpClient = HttpClient.newBuilder().build();
 
         // Wait a bit for servers to fully start
         try {
