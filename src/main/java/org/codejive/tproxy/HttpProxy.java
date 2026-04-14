@@ -284,17 +284,28 @@ public class HttpProxy {
     }
 
     /**
-     * Configure an HttpClient.Builder to use this proxy.
+     * Get a ProxySelector configured to use this proxy.
      *
-     * @param builder the HttpClient.Builder to configure
-     * @return the same builder instance for chaining
+     * <p>Use this to configure HTTP clients or set as the system default:
+     *
+     * <pre>{@code
+     * // Configure a specific HttpClient
+     * HttpClient client = HttpClient.newBuilder()
+     *     .proxy(proxy.asProxySelector())
+     *     .build();
+     *
+     * // Or set as system default
+     * ProxySelector.setDefault(proxy.asProxySelector());
+     * }</pre>
+     *
+     * @return a ProxySelector that routes traffic through this proxy
      * @throws IllegalStateException if the proxy is not running
      */
-    public HttpClient.Builder configureClient(HttpClient.Builder builder) {
+    public ProxySelector asProxySelector() {
         if (!running) {
-            throw new IllegalStateException("Proxy must be running before configuring clients");
+            throw new IllegalStateException("Proxy must be running to create ProxySelector");
         }
-        return builder.proxy(ProxySelector.of(new InetSocketAddress("localhost", port)));
+        return ProxySelector.of(new InetSocketAddress("localhost", port));
     }
 
     private static HttpClient buildHttpClient(SSLContext sslContext) {

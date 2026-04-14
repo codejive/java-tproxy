@@ -18,7 +18,14 @@ A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM
 HttpProxy proxy = new HttpProxy();
 proxy.start(8080);
 
-HttpClient client = proxy.configureClient(HttpClient.newBuilder()).build();
+// Option 1: Configure a specific HttpClient
+HttpClient client = HttpClient.newBuilder()
+    .proxy(proxy.asProxySelector())
+    .build();
+
+// Option 2: Set as system default for all HttpClient instances
+ProxySelector.setDefault(proxy.asProxySelector());
+HttpClient client = HttpClient.newHttpClient(); // Uses system default
 
 HttpResponse<String> response = client.send(
     HttpRequest.newBuilder().uri(URI.create("http://example.com")).build(),
@@ -109,7 +116,8 @@ tmf.init(trustStore);
 SSLContext sslContext = SSLContext.getInstance("TLS");
 sslContext.init(null, tmf.getTrustManagers(), null);
 
-HttpClient client = proxy.configureClient(HttpClient.newBuilder())
+HttpClient client = HttpClient.newBuilder()
+    .proxy(proxy.asProxySelector())
     .sslContext(sslContext)
     .build();
 ```
