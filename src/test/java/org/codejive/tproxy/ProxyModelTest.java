@@ -19,7 +19,7 @@ public class ProxyModelTest {
         Headers headers = Headers.of("Content-Type", "application/json");
         byte[] body = "test body".getBytes();
 
-        ProxyRequest request = new ProxyRequest("GET", uri, headers, body);
+        ProxyRequest request = ProxyRequest.fromBytes("GET", uri, headers, body);
 
         assertThat(request.method()).isEqualTo("GET");
         assertThat(request.uri()).isEqualTo(uri);
@@ -32,7 +32,7 @@ public class ProxyModelTest {
     public void testProxyRequestNullBody() {
         URI uri = URI.create("https://api.example.com/test");
 
-        ProxyRequest request = new ProxyRequest("GET", uri, Headers.empty(), null);
+        ProxyRequest request = ProxyRequest.fromBytes("GET", uri, Headers.empty(), null);
 
         assertThat(request.body()).isNotNull();
         assertThat(request.body()).isEmpty();
@@ -42,7 +42,7 @@ public class ProxyModelTest {
     @DisplayName("ProxyRequest withX methods should create modified copies")
     public void testProxyRequestWithMethods() {
         URI uri = URI.create("https://api.example.com/test");
-        ProxyRequest original = new ProxyRequest("GET", uri, Headers.empty(), null);
+        ProxyRequest original = ProxyRequest.fromBytes("GET", uri, Headers.empty(), null);
 
         ProxyRequest withMethod = original.withMethod("POST");
         assertThat(withMethod.method()).isEqualTo("POST");
@@ -67,7 +67,7 @@ public class ProxyModelTest {
         URI uri = URI.create("https://api.example.com/test");
         Headers headers = Headers.of(Map.of("Accept", List.of("text/html", "application/json")));
 
-        ProxyRequest request = new ProxyRequest("GET", uri, headers, null);
+        ProxyRequest request = ProxyRequest.fromBytes("GET", uri, headers, null);
 
         assertThat(request.headers().all("Accept"))
                 .containsExactly("text/html", "application/json");
@@ -89,7 +89,7 @@ public class ProxyModelTest {
         Headers headers = Headers.of("Content-Type", "application/json");
         byte[] body = "{\"status\":\"ok\"}".getBytes();
 
-        ProxyResponse response = new ProxyResponse(200, headers, body);
+        ProxyResponse response = ProxyResponse.fromBytes(200, headers, body);
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().first("Content-Type")).isEqualTo("application/json");
@@ -99,7 +99,7 @@ public class ProxyModelTest {
     @Test
     @DisplayName("ProxyResponse should handle null body")
     public void testProxyResponseNullBody() {
-        ProxyResponse response = new ProxyResponse(204, Headers.empty(), null);
+        ProxyResponse response = ProxyResponse.fromBytes(204, Headers.empty(), null);
 
         assertThat(response.body()).isNotNull();
         assertThat(response.body()).isEmpty();
@@ -108,7 +108,7 @@ public class ProxyModelTest {
     @Test
     @DisplayName("ProxyResponse withX methods should create modified copies")
     public void testProxyResponseWithMethods() {
-        ProxyResponse original = new ProxyResponse(200, Headers.empty(), "body".getBytes());
+        ProxyResponse original = ProxyResponse.fromBytes(200, Headers.empty(), "body".getBytes());
 
         ProxyResponse withStatus = original.withStatusCode(404);
         assertThat(withStatus.statusCode()).isEqualTo(404);

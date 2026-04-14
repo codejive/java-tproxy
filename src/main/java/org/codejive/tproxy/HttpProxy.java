@@ -1,6 +1,7 @@
 package org.codejive.tproxy;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.http.HttpClient;
@@ -169,9 +170,7 @@ public class HttpProxy {
                             .uri(request.uri())
                             .method(
                                     request.method(),
-                                    request.body().length > 0
-                                            ? BodyPublishers.ofByteArray(request.body())
-                                            : BodyPublishers.noBody());
+                                    BodyPublishers.ofInputStream(() -> request.bodyStream()));
 
             // Add headers (HttpClient sets Host and Content-Length automatically)
             filteredHeaders.forEach(
@@ -185,25 +184,25 @@ public class HttpProxy {
 
             HttpRequest httpRequest = builder.build();
 
-            // Execute request
-            HttpResponse<byte[]> httpResponse =
-                    httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+            // Execute request and stream response
+            HttpResponse<InputStream> httpResponse =
+                    httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
 
             // Convert response
             Headers responseHeaders = convertResponseHeaders(httpResponse);
-            return new ProxyResponse(
+            return ProxyResponse.fromStream(
                     httpResponse.statusCode(), responseHeaders, httpResponse.body());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error("Request interrupted: {} {}", request.method(), request.uri(), e);
-            return new ProxyResponse(
+            return ProxyResponse.fromBytes(
                     503,
                     Headers.of("Content-Type", "text/plain"),
                     "Service Unavailable: Request interrupted".getBytes());
         } catch (IOException e) {
             logger.error("Error executing request: {} {}", request.method(), request.uri(), e);
-            return new ProxyResponse(
+            return ProxyResponse.fromBytes(
                     502,
                     Headers.of("Content-Type", "text/plain"),
                     ("Bad Gateway: " + e.getMessage()).getBytes());
@@ -216,7 +215,7 @@ public class HttpProxy {
      * @param httpResponse the HTTP response
      * @return converted headers
      */
-    private Headers convertResponseHeaders(HttpResponse<byte[]> httpResponse) {
+    private Headers convertResponseHeaders(HttpResponse<InputStream> httpResponse) {
         return Headers.of(httpResponse.headers().map());
     }
 

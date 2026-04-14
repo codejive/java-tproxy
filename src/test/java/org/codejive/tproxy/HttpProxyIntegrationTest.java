@@ -75,7 +75,7 @@ public class HttpProxyIntegrationTest {
 
         // Make request through proxy
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/api/test"),
                         Headers.of("User-Agent", "TestClient/1.0"),
@@ -110,7 +110,7 @@ public class HttpProxyIntegrationTest {
         // Make request through proxy
         String requestBody = "{\"name\":\"test\"}";
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "POST",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/api/data"),
                         Headers.of("Content-Type", "application/json"),
@@ -142,7 +142,7 @@ public class HttpProxyIntegrationTest {
 
         // Make request through proxy
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create(
                                 "http://127.0.0.1:" + BACKEND_PORT + "/search?q=test+query&page=2"),
@@ -178,7 +178,7 @@ public class HttpProxyIntegrationTest {
 
         // Make request through proxy
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/api/item"),
                         Headers.of("X-Request-ID", "12345"),
@@ -211,7 +211,7 @@ public class HttpProxyIntegrationTest {
 
         // Make request through proxy
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/api/test"),
                         Headers.empty(),
@@ -243,7 +243,7 @@ public class HttpProxyIntegrationTest {
 
         // Make request through proxy
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/api/test"),
                         Headers.empty(),
@@ -267,7 +267,7 @@ public class HttpProxyIntegrationTest {
 
         // Test PUT
         ProxyRequest putRequest =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "PUT",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/resource"),
                         Headers.empty(),
@@ -277,7 +277,7 @@ public class HttpProxyIntegrationTest {
 
         // Test DELETE
         ProxyRequest deleteRequest =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "DELETE",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/resource"),
                         Headers.empty(),
@@ -287,7 +287,7 @@ public class HttpProxyIntegrationTest {
 
         // Test PATCH
         ProxyRequest patchRequest =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "PATCH",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/resource"),
                         Headers.empty(),
@@ -307,7 +307,7 @@ public class HttpProxyIntegrationTest {
 
         // Test 404
         ProxyRequest notFoundRequest =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/not-found"),
                         Headers.empty(),
@@ -317,7 +317,7 @@ public class HttpProxyIntegrationTest {
 
         // Test 500
         ProxyRequest errorRequest =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET",
                         URI.create("http://127.0.0.1:" + BACKEND_PORT + "/server-error"),
                         Headers.empty(),

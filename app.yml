@@ -1,0 +1,29 @@
+name: java-tproxy
+description: A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support.
+documentation: |
+  # java-tproxy
+
+  A lightweight HTTP/HTTPS proxy library with pluggable interceptors and full MITM HTTPS support.
+
+  ## Features
+
+  - **HTTP Proxy** — Full HTTP/1.1 proxy
+  - **HTTPS Interception** — Man-in-the-Middle mode with on-the-fly certificate generation
+  - **HTTPS Pass-through** — Secure tunneling via CONNECT (no decryption)
+  - **Pluggable Interceptors** — Chain-of-responsibility for inspecting/modifying requests and responses
+  - **Certificate Authority** — Auto-generated CA with per-hostname server certificates (BouncyCastle)
+authors:
+- Tako Schotanus (tako@codejive.org)
+contributors:
+- copilot
+links:
+  homepage: https://github.com/codejive/java-tproxy
+  repository: https://github.com/codejive/java-tproxy
+  documentation: https://github.com/codejive/java-tproxy/blob/main/README.md
+java: 21
+dependencies:
+actions:
+  clean: ./mvnw clean
+  build: ./mvnw spotless:apply package -DskipTests
+  test: ./mvnw test
+  format: ./mvnw spotless:apply

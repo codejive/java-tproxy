@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
@@ -284,10 +285,8 @@ class ProxyServer {
             }
             Headers headers = Headers.of(headerMap);
 
-            // Read body
-            byte[] body = req.getInputStream().readAllBytes();
-
-            return new ProxyRequest(method, uri, headers, body);
+            // Read body as stream (servlet may buffer internally)
+            return ProxyRequest.fromStream(method, uri, headers, req.getInputStream());
         }
 
         /**
@@ -314,10 +313,9 @@ class ProxyServer {
                                 }
                             });
 
-            // Write body
-            byte[] body = proxyResponse.body();
-            if (body != null && body.length > 0) {
-                resp.getOutputStream().write(body);
+            // Stream body
+            try (InputStream bodyStream = proxyResponse.bodyStream()) {
+                bodyStream.transferTo(resp.getOutputStream());
             }
         }
     }

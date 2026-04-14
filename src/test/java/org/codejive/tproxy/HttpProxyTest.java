@@ -41,13 +41,13 @@ public class HttpProxyTest {
         // Add a short-circuit interceptor to avoid real network call
         proxy.addInterceptor(
                 (request, chain) ->
-                        new ProxyResponse(
+                        ProxyResponse.fromBytes(
                                 200,
                                 Headers.of("Content-Type", "text/plain"),
                                 "Mock response".getBytes()));
 
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET", URI.create("http://example.com/test"), Headers.empty(), null);
 
         ProxyResponse response = proxy.execute(request);
@@ -66,7 +66,7 @@ public class HttpProxyTest {
                 });
 
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "POST",
                         URI.create("http://example.com/api"),
                         Headers.of("Content-Type", "application/json"),
@@ -93,11 +93,11 @@ public class HttpProxyTest {
         // Inner interceptor short-circuits — never calls chain.proceed()
         proxy.addInterceptor(
                 (request, chain) ->
-                        new ProxyResponse(
+                        ProxyResponse.fromBytes(
                                 418, Headers.of("X-Mock", "true"), "I'm a teapot".getBytes()));
 
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET", URI.create("http://example.com/test"), Headers.empty(), null);
 
         ProxyResponse response = proxy.execute(request);
@@ -146,7 +146,7 @@ public class HttpProxyTest {
                 });
 
         ProxyRequest request =
-                new ProxyRequest(
+                ProxyRequest.fromBytes(
                         "GET", URI.create("http://example.com/test"), Headers.empty(), null);
 
         proxy.execute(request);
