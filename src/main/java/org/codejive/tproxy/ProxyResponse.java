@@ -3,6 +3,10 @@ package org.codejive.tproxy;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -18,14 +22,13 @@ import java.util.function.Supplier;
  * <p>The {@link #body()} method materializes the stream into a byte array and caches it, so
  * subsequent calls return the same cached array.
  *
- * <p><b>Important for Interceptors:</b> If your interceptor needs to read the body, you must create
- * a new {@code ProxyResponse} with a re-readable body source. For example:
+ * <p><b>Important for Interceptors:</b> If your interceptor needs to read the body, you can use
+ * {@link #materializeTo(Path)} to save it to a file and get a re-readable response:
  *
  * <pre>{@code
  * ProxyResponse original = chain.proceed(request);
  * Path tempFile = Files.createTempFile("proxy", ".tmp");
- * Files.copy(original.bodyStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
- * return original.withBody(() -> Files.newInputStream(tempFile));
+ * return original.materializeTo(tempFile);
  * }</pre>
  */
 public class ProxyResponse {
@@ -254,6 +257,33 @@ public class ProxyResponse {
      */
     public ProxyResponse withBody(Supplier<InputStream> bodySupplier) {
         return ProxyResponse.fromSupplier(statusCode, headers, bodySupplier);
+    }
+
+    /**
+     * Materialize the response body to a file and return a new ProxyResponse with a re-readable
+     * body source that reads from the file. This is useful for interceptors that need to read the
+     * body multiple times.
+     *
+     * <p>The body stream is copied to the specified file, replacing it if it already exists. The
+     * returned ProxyResponse will have a supplier-based body that opens a new InputStream from the
+     * file on each call to {@link #bodyStream()}.
+     *
+     * @param path the file path to write the body to
+     * @return a new ProxyResponse with a supplier that reads from the file
+     * @throws IOException if an I/O error occurs while writing to the file
+     */
+    public ProxyResponse materializeTo(Path path) throws IOException {
+        try (InputStream bodyStream = bodyStream()) {
+            Files.copy(bodyStream, path, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return withBody(
+                () -> {
+                    try {
+                        return Files.newInputStream(path);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException("Failed to read from " + path, e);
+                    }
+                });
     }
 
     @Override

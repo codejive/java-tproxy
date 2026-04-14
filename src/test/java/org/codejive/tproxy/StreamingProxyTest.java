@@ -7,9 +7,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Random;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for streaming body support in ProxyRequest and ProxyResponse. */
 @DisplayName("Streaming Proxy Tests")
@@ -165,6 +168,53 @@ public class StreamingProxyTest {
 
         String content2 = new String(response.bodyStream().readAllBytes());
         assertThat(content2).isEqualTo("repeatable data");
+    }
+
+    @Test
+    @DisplayName("materializeTo() saves body to file and returns re-readable response")
+    public void testMaterializeTo(@TempDir Path tempDir) throws IOException {
+        // Create a response with a single-use stream
+        InputStream stream = new ByteArrayInputStream("test content for file".getBytes());
+        ProxyResponse response = ProxyResponse.fromStream(200, Headers.empty(), stream);
+
+        // Materialize to a temp file
+        Path tempFile = tempDir.resolve("response.bin");
+        ProxyResponse materialized = response.materializeTo(tempFile);
+
+        // Verify file was created and contains the body
+        assertThat(tempFile).exists();
+        String fileContent = Files.readString(tempFile);
+        assertThat(fileContent).isEqualTo("test content for file");
+
+        // Verify the materialized response is re-readable
+        String content1 = new String(materialized.bodyStream().readAllBytes());
+        assertThat(content1).isEqualTo("test content for file");
+
+        String content2 = new String(materialized.bodyStream().readAllBytes());
+        assertThat(content2).isEqualTo("test content for file");
+
+        // Verify status code and headers are preserved
+        assertThat(materialized.statusCode()).isEqualTo(200);
+        assertThat(materialized.headers()).isEqualTo(Headers.empty());
+    }
+
+    @Test
+    @DisplayName("materializeTo() replaces existing file")
+    public void testMaterializeToReplacesFile(@TempDir Path tempDir) throws IOException {
+        Path tempFile = tempDir.resolve("response.bin");
+
+        // Create a file with existing content
+        Files.writeString(tempFile, "old content");
+        assertThat(Files.readString(tempFile)).isEqualTo("old content");
+
+        // Materialize new content to the same file
+        ProxyResponse response =
+                ProxyResponse.fromBytes(200, Headers.empty(), "new content".getBytes());
+        ProxyResponse materialized = response.materializeTo(tempFile);
+
+        // Verify file was replaced
+        assertThat(Files.readString(tempFile)).isEqualTo("new content");
+        assertThat(new String(materialized.bodyStream().readAllBytes())).isEqualTo("new content");
     }
 
     /**
